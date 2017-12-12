@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>websockt</title>
+    <style>
+        * {
+            font-size: 12px;
+        }
+
+        .msg-recieved {
+            color: purple;
+        }
+
+        .msg-send {
+            color: green;
+        }
+
+        .msg-box,
+        .input-box {
+            border: 1px solid #e0e0e0;
+            padding: 10px;
+            margin: 10px;
+        }
+
+        .input-box {
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <div id="result" class="msg-box"></div>
+    </div>
+    <div class="input-box">
+        <div class="input">
+            <textarea id="message" type="text" value=""></textarea>
+        </div>
+        <div class="btn-row">
+            <button onclick="sendMessage()">Send Message</button>
+            <button onclick="closeSocket()">Close WebSocket</button>
+        </div>
+    </div>
+
+</body>
+<script>
+
+    if (window.WebSocket) {
+        init();
+    } else {
+        alert('this browser does not support WebSocket', 'my-custom-chat-protocol');
+    }
+
+    var socket
+
+    function init() {
+        //创建WebSocket实例，可以使用ws和wss。第二个参数可以选填自定义协议，如果多协议，可以以数组方式
+        socket = new WebSocket('ws://localhost:8081');
+        /**
+         * 1、open
+         * 服务器相应WebSocket连接请求触发
+         */
+        socket.onopen = (event) => {
+            doSendMsgToServer('Hello Server!')
+        };
+        /**
+         * 2、message
+         *  服务器有 响应数据 触发
+         */
+        socket.onmessage = (event) => {
+            var div = document.createElement("div");
+            var result = document.getElementById("result");
+            div.className = "msg-recieved"
+            div.innerText = event.data
+            result.appendChild(div);
+        };
+        /**
+         * 3、error
+         *  出错时触发，并且会关闭连接。这时可以根据错误信息进行按需处理
+         */
+        socket.onerror = (event) => {
+            console.info('onerror:', event.wasClean)
+        }
+        /**
+         * 4、close
+         *  连接关闭时触发，这在两端都可以关闭。另外如果连接失败也是会触发的。
+         *  针对关闭一般我们会做一些异常处理,关于异常参数：
+         *  (1)、socket.readyState 
+         *          2 正在关闭
+         *          3 已经关闭
+         *  (2)、event.wasClean [Boolean]  true 客户端或者服务器端调用close主动关闭，false反之
+         *  (3)、event.code [Number] 关闭连接的状态码。socket.close(code, reason)
+         *  (4)、event.reason [String] 关闭连接的原因。socket.close(code, reason)
+         *          
+         */
+        socket.onclose = (event) => {
+            console.info('onclose:', event.wasClean, event.code, event.reason)
+        }
+    }
+
+    function closeSocket() {
+        //The code must be either 1000, or between 3000 and 4999. 1009
+        if (socket) {
+            socket.close(1000, encodeURIComponent('Client side close socket'))
+        }
+    }
+
+    function sendMessage() {
+        //判断是否连接是否还存在
+        /*
+        CONNECTING	0	连接还没开启。
+        OPEN	1	连接已开启并准备好进行通信。
+        CLOSING	2	连接正在关闭的过程中。
+        CLOSED	3	连接已经关闭，或者连接无法建立。
+        */
+        if (socket.readyState == WebSocket.OPEN) {
+            var message = document.getElementById("message").value;
+            if (message != "") {
+                doSendMsgToServer(message)
+            }
+        }
+    }
+
+    function doSendMsgToServer(msg) {
+        var div = document.createElement("div");
+        var result = document.getElementById("result");
+
+        div.className = "msg-send"
+        div.innerText = msg
+        result.appendChild(div);
+
+        socket.send(msg);
+    }
+</script>
+
+</html>
